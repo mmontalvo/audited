@@ -78,6 +78,12 @@ module Audited
         has_many :associated_audits, as: :associated, class_name: Audited.audit_class.name
       end
 
+      def has_multiple_associated_audits
+        has_many :multiple_associated_audits, ->(object) {
+          unscope(:where).where("multiple_associated ->> '#{object.class.name.downcase}' = '#{object.id}'")
+        }, class_name: Audited.audit_class.name
+      end
+
       def default_ignored_attributes
         [primary_key, inheritance_column]
       end
@@ -219,9 +225,21 @@ module Audited
       end
 
       def write_audit(attrs)
-        attrs[:associated] = send(audit_associated_with) unless audit_associated_with.nil?
+        unless audit_associated_with.nil?
+          audit_associated_with.is_a?(Array) ?
+            attrs[:multiple_associated] = extra_jsonb_associations(self) :
+            attrs[:associated] = send(audit_associated_with)
+        end
         self.audit_comment = nil
         run_callbacks(:audit)  { audits.create(attrs) } if auditing_enabled
+      end
+
+      def extra_jsonb_associations(object)
+        audits_associated = audit_associated_with.is_a?(Array) ? audit_associated_with : [audit_associated_with]
+        audits_associated.inject({}) do |acum, audit_associated|
+          acum[audit_associated] = object.send(object.class.reflect_on_association(audit_associated).foreign_key)
+          acum
+        end
       end
 
       def require_comment

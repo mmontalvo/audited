@@ -10,6 +10,7 @@ class <%= migration_class_name %> < <%= migration_parent %>
       t.column :username, :string
       t.column :action, :string
       t.column :audited_changes, :<%= options[:audited_changes_column_type] %>
+      t.column :multiple_associated, :<%= options[:audited_multiple_associated_column_type] %>
       t.column :version, :integer, :default => 0
       t.column :comment, :string
       t.column :remote_address, :string
